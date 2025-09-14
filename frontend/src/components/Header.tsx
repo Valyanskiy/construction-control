@@ -13,14 +13,11 @@ function Header() {
         <motion.nav
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            transition={{ease: "easeOut", duration: 0.3}}
             className={`w-screen fixed top-0 left-0 z-50 backdrop-blur-md justify-center flex border-b-1 border-gray-400/40 backdrop-brightness-[97.5%] yellow-500`}
         >
             <div className="flex flex-row gap-5">
                 <NavLink to="/" className={linkClass}>
-                    Главная
-                </NavLink>
-                <NavLink to="/w" className={linkClass}>
                     Главная
                 </NavLink>
             </div>
