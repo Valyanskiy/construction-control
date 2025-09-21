@@ -14,12 +14,20 @@ function Header() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ease: "easeOut", duration: 0.3}}
-            className={`w-screen fixed top-0 left-0 z-50 backdrop-blur-md justify-center flex border-b-1 border-gray-400/40 backdrop-brightness-[97.5%] yellow-500`}
+            className={`w-screen fixed top-0 left-0 z-50 backdrop-blur-md justify-center flex border-b-1 border-gray-300/40 backdrop-brightness-95 yellow-500`}
         >
+            <div className="max-w-full">
+
+            </div>
+
             <div className="flex flex-row gap-5">
                 <NavLink to="/" className={linkClass}>
                     Главная
                 </NavLink>
+            </div>
+
+            <div className="max-w-full">
+
             </div>
         </motion.nav>
     )
