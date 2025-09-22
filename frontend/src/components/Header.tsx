@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
 import { NavLink } from "react-router-dom";
 
-function Header() {
+interface HeaderProps {
+    isAuth: boolean;
+}
+
+function Header({isAuth} : HeaderProps) {
     const linkClass = ({ isActive }: { isActive: boolean }) =>
         `p-2 text-center ${
             isActive
@@ -14,7 +18,7 @@ function Header() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ease: "easeOut", duration: 0.3}}
-            className={`w-screen fixed top-0 left-0 z-50 backdrop-blur-md justify-center flex border-b-1 border-gray-300/40 backdrop-brightness-95 yellow-500`}
+            className={`w-screen fixed top-0 left-0 z-50 backdrop-blur-md justify-center flex border-b-1 border-gray-300/40 backdrop-brightness-95 yellow-500 ${isAuth ? "" : "hidden"}`}
         >
             <div className="max-w-full">
 

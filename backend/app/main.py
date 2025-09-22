@@ -2,6 +2,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Depends, status
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -13,6 +14,15 @@ from backend.app.schemas.base import UserCreate
 from backend.app.db.database import get_db
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+
+# Добавляем CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 security = HTTPBearer()
 
 app.include_router(api_router, prefix="/api/v1")
@@ -67,6 +77,6 @@ def auth(user: UserCreate, db: Session = Depends(get_db)):
     else:
         raise HTTPException(status_code=401, detail="Неверный пароль")
 
-@app.get("/protected")
+@app.get("/userinfo")
 def protected_route(current_user: str = Depends(verify_token)):
-    return {"message": f"Привет, {current_user}! Это защищенный маршрут."}
+    return {"nickname": current_user}
