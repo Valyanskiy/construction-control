@@ -7,11 +7,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from backend.app.api.v1.api import api_router
-from backend.app.core.config import settings
-from backend.app.models.user import User
-from backend.app.schemas.base import UserCreate
-from backend.app.db.database import get_db
+from app.api.v1.api import api_router
+from app.core.config import settings
+from app.models.user import User
+from app.schemas.base import UserCreate
+from app.db.database import get_db
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 
@@ -19,8 +19,8 @@ app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 security = HTTPBearer()
@@ -80,3 +80,16 @@ def auth(user: UserCreate, db: Session = Depends(get_db)):
 @app.get("/userinfo")
 def protected_route(current_user: str = Depends(verify_token)):
     return {"nickname": current_user}
+
+@app.get("/projects")
+def projects(current_user: str = Depends(verify_token), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.nickname == current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    user_projects = user.projects.all()
+    return {"projects": [{"id": p.id, "title": p.title} for p in user_projects]}
+
+# Создание админа при пустой БД после инициализации всех моделей
+# from app.init_admin import create_admin_if_empty
+# create_admin_if_empty()

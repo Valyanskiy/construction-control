@@ -1,14 +1,25 @@
 import '../styles/App.css'
 import Logo from '../assets/Logo.png'
-import {useNavigate} from "react-router-dom";
-import {useCallback} from "react";
+import {useNavigate, useOutletContext} from "react-router-dom";
+import {useCallback, useEffect} from "react";
+
+interface OutletContext {
+    isAuth: string;
+}
 
 function Home() {
     const navigate = useNavigate();
+    const { isAuth } = useOutletContext<OutletContext>();
 
     const handleClick = useCallback(() => {
         navigate("/auth");
     }, [navigate]);
+
+    useEffect(() => {
+        if (isAuth.length > 0) {
+            navigate("/projects");
+        }
+    }, [isAuth, navigate]);
 
     return (
         <div className="flex flex-col justify-center min-h-screen text-[#402f00]">

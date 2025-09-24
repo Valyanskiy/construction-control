@@ -6,7 +6,7 @@ import {useEffect, useState} from "react";
 import axios from "axios";
 
 function App() {
-    const [isAuth, setIsAuth] = useState(false)
+    const [isAuth, setIsAuth] = useState("")
 
     useEffect(() => {
         const fetchData = async () => {
@@ -22,7 +22,7 @@ function App() {
                 )
 
                 if (response.status === 200) {
-                    setIsAuth(true)
+                    setIsAuth(response.data.nickname)
                 }
             } catch (error) {
                 console.log(error)
@@ -40,7 +40,7 @@ function App() {
                 animate={{ opacity: 1 }}
                 transition={{ease: "easeOut", duration: 0.3}}
                 className={"min-h-screen"}>
-                <Outlet/>
+                <Outlet context={{isAuth}}/>
             </motion.div>
         </div>
     )

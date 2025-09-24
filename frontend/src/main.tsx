@@ -3,7 +3,9 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import {StrictMode} from "react";
 import App from './App.tsx'
 import Home from './pages/Home';
+import Projects from './pages/Projects';
 import AuthForm from "./pages/AuthForm.tsx";
+import ProtectedRoute from './components/ProtectedRoute';
 
 const router = createBrowserRouter([
     {
@@ -13,6 +15,10 @@ const router = createBrowserRouter([
             {
                 path: "",
                 element: <Home />
+            },
+            {
+                path: "projects",
+                element: <ProtectedRoute><Projects /></ProtectedRoute>
             }
         ]
     },
