@@ -6,6 +6,7 @@ from app.models.association import project_users
 
 class Project(BaseModel):
     __tablename__ = "projects"
+    __table_args__ = {'extend_existing': True}
 
     title = Column(String(100), nullable=False)
     description = Column(Text)
@@ -18,3 +19,6 @@ class Project(BaseModel):
         back_populates="projects",
         lazy="dynamic"  # Для возможности дополнительной фильтрации
     )
+    
+    # Связь с объектами (один ко многим)
+    objects = relationship("Object", back_populates="project", cascade="all, delete-orphan")

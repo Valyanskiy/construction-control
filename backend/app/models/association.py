@@ -12,5 +12,17 @@ project_users = Table(
     Column('joined_at', DateTime, server_default=func.now()),
 
     # Уникальный constraint - пользователь может быть в проекте только один раз
-    UniqueConstraint('user_id', 'project_id', name='uq_user_project')
+    UniqueConstraint('user_id', 'project_id', name='uq_user_project'),
+    extend_existing=True
+)
+
+defect_users = Table(
+    'defect_users',
+    Base.metadata,
+    Column('id', Integer, primary_key=True),
+    Column('user_id', Integer, ForeignKey('users.id'), nullable=False),
+    Column('defect_id', Integer, ForeignKey('defects.id'), nullable=False),
+    Column('assigned_at', DateTime, server_default=func.now()),
+    UniqueConstraint('user_id', 'defect_id', name='uq_user_defect'),
+    extend_existing=True
 )

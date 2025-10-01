@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Enum, DateTime, func
 from sqlalchemy.orm import relationship
 
-from app.models.association import project_users
+from app.models.association import project_users, defect_users
 from app.models.base import BaseModel
 import enum
 
@@ -12,6 +12,7 @@ class RoleEnum(enum.Enum):
 
 class User(BaseModel):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}
 
     nickname: str = Column(String, nullable=False)
     password: str = Column(String, nullable=False)
@@ -24,4 +25,11 @@ class User(BaseModel):
         secondary=project_users,
         back_populates="users",
         lazy="dynamic"
+    )
+    
+    # Связь многие-ко-многим с дефектами
+    assigned_defects = relationship(
+        "Defect",
+        secondary=defect_users,
+        back_populates="assigned_users"
     )
