@@ -5,6 +5,7 @@ import {motion} from "framer-motion";
 import axios from "axios";
 import Carousel from 'react-multi-carousel';
 import 'react-multi-carousel/lib/styles.css';
+import EditDefectModal from "../components/EditDefectModal";
 
 interface Defect {
     id: number;
@@ -82,7 +83,10 @@ function DefectDetail() {
                 headers: {'Authorization': `Bearer ${localStorage.getItem('access_token')}`}
             });
 
-            setCurrentUserId(allUsersRes.data.find((u: User) => u.nickname === userInfoRes.data.nickname).id);
+            const currentUser = allUsersRes.data.find((u: User) => u.nickname === userInfoRes.data.nickname);
+            if (currentUser) {
+                setCurrentUserId(currentUser.id);
+            }
         }
 
         fetchData()
@@ -442,208 +446,3 @@ function DefectDetail() {
 }
 
 export default DefectDetail;
-
-function EditDefectModal({defect, users, onClose, onUpdate, userRole}: {
-    defect: Defect,
-    users: User[],
-    onClose: () => void,
-    onUpdate: (data: any) => void
-    userRole: string
-}) {
-    const [title, setTitle] = useState(defect.title);
-    const [description, setDescription] = useState(defect.description || "");
-    const [priority, setPriority] = useState(defect.priority);
-    const [assignedUsers, setAssignedUsers] = useState<number[]>(defect.assigned_user_ids);
-    const [dueDate, setDueDate] = useState(defect.due_date || "");
-    const [images, setImages] = useState<{id: number, url: string}[]>([]);
-    const [newImages, setNewImages] = useState<File[]>([]);
-
-    const baseUrl = `${new URL(document.URL).protocol}//${new URL(document.URL).hostname}:8000`;
-
-    useEffect(() => {
-        loadImages();
-    }, []);
-
-    const loadImages = async () => {
-        try {
-            const response = await api.get(`/api/v1/defects/${defect.id}/images`);
-            const imageList = [];
-            if (defect.has_photo) {
-                imageList.push({id: 0, url: `${baseUrl}/api/v1/defects/${defect.id}/photo`});
-            }
-            response.data.forEach((img: any) => {
-                imageList.push({id: img.id, url: `${baseUrl}/api/v1/defects/${defect.id}/images/${img.id}`});
-            });
-            setImages(imageList);
-        } catch (error) {
-            console.error('Error loading images:', error);
-        }
-    };
-
-    const deleteImage = async (imageId: number) => {
-        try {
-            if (imageId === 0) {
-                await api.delete(`/api/v1/defects/${defect.id}/photo`);
-            } else {
-                await api.delete(`/api/v1/defects/${defect.id}/images/${imageId}`);
-            }
-            setImages(images.filter(img => img.id !== imageId));
-        } catch (error) {
-            console.error('Error deleting image:', error);
-        }
-    };
-
-    const addImages = (files: FileList) => {
-        setNewImages([...newImages, ...Array.from(files)]);
-    };
-
-    const removeNewImage = (index: number) => {
-        setNewImages(newImages.filter((_, i) => i !== index));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        // Upload new images first
-        for (const file of newImages) {
-            const formData = new FormData();
-            formData.append('image', file);
-            try {
-                await api.post(`/api/v1/defects/${defect.id}/images`, formData);
-            } catch (error) {
-                console.error('Error uploading image:', error);
-            }
-        }
-        
-        const data = {
-            title,
-            description,
-            priority,
-            due_date: dueDate || null,
-            assigned_user_ids: assignedUsers
-        };
-        onUpdate(data);
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 text-[#402f00]">
-            <div className="bg-white rounded-lg p-6 w-96 max-h-[80vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Редактировать дефект</h2>
-                    <button onClick={onClose}
-                            className="self-start transition-all duration-200 text-gray-500 hover:text-black rounded-lg cursor-pointer text-center">
-                        ×
-                    </button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                    <input
-                        type="text"
-                        placeholder="Название дефекта"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg mb-3"
-                        required
-                    />
-                    <textarea
-                        placeholder="Описание"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg mb-3"
-                    />
-                    {userRole === 'MANAGER' && (
-                        <select
-                            value={priority}
-                            onChange={(e) => setPriority(e.target.value)}
-                            className="w-full px-3 py-2 border rounded-lg mb-3"
-                        >
-                            <option value="LOW">Низкий</option>
-                            <option value="MEDIUM">Средний</option>
-                            <option value="HIGH">Высокий</option>
-                            <option value="CRITICAL">Критический</option>
-                        </select>
-                    )}
-                    <input
-                        type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg mb-3"
-                        placeholder="Дата исправления"
-                    />
-                    
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">Изображения:</label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {images.map((image) => (
-                                <div key={image.id} className="relative w-16 h-16">
-                                    <img src={image.url} alt="" className="w-full h-full object-cover rounded border" />
-                                    <button
-                                        type="button"
-                                        onClick={() => deleteImage(image.id)}
-                                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                            {newImages.map((file, index) => (
-                                <div key={`new-${index}`} className="relative w-16 h-16">
-                                    <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover rounded border" />
-                                    <button
-                                        type="button"
-                                        onClick={() => removeNewImage(index)}
-                                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            ))}
-                            <label className="w-16 h-16 border-2 border-dashed border-gray-300 rounded flex items-center justify-center cursor-pointer hover:border-gray-400">
-                                <span className="text-2xl text-gray-400">+</span>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    onChange={(e) => e.target.files && addImages(e.target.files)}
-                                    className="hidden"
-                                />
-                            </label>
-                        </div>
-                    </div>
-
-                    {userRole === 'MANAGER' && (
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium mb-2">Назначить пользователей:</label>
-                            {users.filter(user => {
-                                return user.role == "ENGINEER"
-                            }).map(user => (
-                                <label key={user.id} className="flex items-center mb-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={assignedUsers.includes(user.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setAssignedUsers([...assignedUsers, user.id]);
-                                            } else {
-                                                setAssignedUsers(assignedUsers.filter(id => id !== user.id));
-                                            }
-                                        }}
-                                        className="mr-2"
-                                    />
-                                    {user.nickname}
-                                </label>
-                            ))}
-                        </div>
-                    )}
-                    <div className="flex gap-2">
-                        <button type="submit"
-                                className="cursor-pointer px-4 py-2 bg-yellow-500 rounded-lg font-semiboldshadow-lg transform hover:scale-105 transition-all duration-200 ease-in-out">Сохранить
-                        </button>
-                        <button type="button" onClick={onClose}
-                                className="cursor-pointer px-4 py-2 bg-yellow-500 rounded-lg font-semiboldshadow-lg transform hover:scale-105 transition-all duration-200 ease-in-out">Отмена
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}

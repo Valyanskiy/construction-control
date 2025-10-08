@@ -107,7 +107,7 @@ function Projects() {
                     <div
                         key={project.id}
                         className="rounded-lg w-[40vw] transition-all duration-200 hover:bg-[#efefef] flex justify-between p-3 text-[#402f00] font-bold bg-[#fafafa]">
-                        {editingId === project.id ? (
+                        {editingId === project.id && userRole === "MANAGER" ? (
                             <div className="flex gap-2 w-full">
                                 <input 
                                     type="text" 
