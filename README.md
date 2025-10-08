@@ -30,3 +30,71 @@
 ## ERD диаграмма
 Диаграмма базы данных:
 ![public.png](public.png)
+
+## Развёртывание проекта
+
+### Требования
+- Python 3.8+
+- Node.js 16+
+- PostgreSQL 12+
+
+### Бэкенд
+1. Перейти в папку backend:
+```bash
+cd backend
+```
+
+2. Создать виртуальное окружение:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# или
+.venv\Scripts\activate     # Windows
+```
+
+3. Установить зависимости:
+```bash
+pip install -r req.txt
+```
+
+4. Настроить базу данных в `.env`:
+```env
+DATABASE_URL=postgresql://username:password@localhost/construction_control
+SECRET_KEY=your-secret-key
+```
+
+5. Создать init миграцию:
+```bash
+alembic init alembic
+```
+
+6. Выполнить миграции:
+```bash
+alembic upgrade head
+```
+
+7. Запустить сервер:
+```bash
+python run.py
+```
+
+### Фронтенд
+1. Перейти в папку frontend:
+```bash
+cd frontend
+```
+
+2. Установить зависимости:
+```bash
+npm install
+```
+
+3. Запустить в режиме разработки:
+```bash
+npm run dev
+```
+
+### Доступ
+- Фронтенд: http://localhost:5173
+- Бэкенд API: http://localhost:8000
+- Админ: admin/12345678
