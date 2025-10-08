@@ -4,6 +4,8 @@ import {StrictMode} from "react";
 import App from './App.tsx'
 import Home from './pages/Home';
 import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
+import DefectDetail from './pages/DefectDetail';
 import AuthForm from "./pages/AuthForm.tsx";
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -19,6 +21,14 @@ const router = createBrowserRouter([
             {
                 path: "projects",
                 element: <ProtectedRoute><Projects /></ProtectedRoute>
+            },
+            {
+                path: "projects/:id",
+                element: <ProtectedRoute><ProjectDetail /></ProtectedRoute>
+            },
+            {
+                path: "projects/:projectId/defects/:defectId",
+                element: <ProtectedRoute><DefectDetail /></ProtectedRoute>
             }
         ]
     },

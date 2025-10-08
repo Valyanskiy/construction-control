@@ -1,20 +1,23 @@
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from fastapi import HTTPException, Depends, status, File, UploadFile, Form
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from sqlalchemy import func, Date, cast
 from typing import List, Optional
 import json
+import csv
+import io
 
 from app.core.config import settings
 from app.db.database import get_db, SessionLocal
 from app.models.user import User, RoleEnum
 from app.models.project import Project
-from app.models import Defect, Object, DefectComment, DefectHistory, DefectImage
+from app.models import Defect, Object, DefectComment, DefectHistory, DefectImage, Project
 from app.models.defect import DefectStatus, DefectPriority
 from app.schemas.base import UserCreate, ProjectCreate
 from app.schemas.defect import DefectUpdate, DefectResponse, DefectCommentCreate, DefectCommentResponse
@@ -289,7 +292,7 @@ async def create_defect(
     title: str = Form(...),
     object_id: int = Form(...),
     description: Optional[str] = Form(None),
-    priority: str = Form("medium"),
+    priority: str = Form("MEDIUM"),
     due_date: Optional[str] = Form(None),
     assigned_user_ids: str = Form("[]"),
     photo: Optional[UploadFile] = File(None),
@@ -302,7 +305,11 @@ async def create_defect(
     
     photo_data = None
     if photo:
+        print(f"Photo received: {photo.filename}, size: {photo.size}")
         photo_data = await photo.read()
+        print(f"Photo data length: {len(photo_data) if photo_data else 0}")
+    else:
+        print("No photo received")
     
     user_ids = json.loads(assigned_user_ids)
     priority_enum = DefectPriority(priority.upper())
@@ -320,6 +327,7 @@ async def create_defect(
         object_id=object_id,
         photo=photo_data
     )
+    print(f"Creating defect with photo: {photo_data is not None}")
     db.add(db_defect)
     db.flush()
     
@@ -345,6 +353,75 @@ async def create_defect(
     db.refresh(db_defect)
     
     return build_defect_response(db_defect)
+
+@app.get("/api/v1/defects/export")
+def export_defects_csv(db: Session = Depends(get_db)):
+    from sqlalchemy.orm import joinedload
+    defects = db.query(Defect).options(
+        joinedload(Defect.object).joinedload(Object.project)
+    ).all()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Название', 'Описание', 'Статус', 'Приоритет', 'Создан', 'Обновлен', 'Объект', 'Проект'])
+    
+    for defect in defects:
+        writer.writerow([
+            defect.id,
+            defect.title,
+            defect.description or '',
+            defect.status.value,
+            defect.priority.value,
+            defect.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            defect.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            defect.object.name,
+            defect.object.project.title
+        ])
+    
+    output.seek(0)
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=defects_export_{date.today()}.csv"}
+    )
+
+@app.get("/api/v1/defects/stats/weekly")
+def get_weekly_stats(db: Session = Depends(get_db)):
+    end_date = date.today()
+    start_date = end_date - timedelta(days=6)
+    
+    # Created defects by day
+    created_stats = db.query(
+        cast(Defect.created_at, Date).label('date'),
+        func.count(Defect.id).label('count')
+    ).filter(
+        cast(Defect.created_at, Date) >= start_date,
+        cast(Defect.created_at, Date) <= end_date
+    ).group_by(cast(Defect.created_at, Date)).all()
+    
+    # Resolved defects by day (status CLOSED)
+    resolved_stats = db.query(
+        cast(Defect.updated_at, Date).label('date'),
+        func.count(Defect.id).label('count')
+    ).filter(
+        cast(Defect.updated_at, Date) >= start_date,
+        cast(Defect.updated_at, Date) <= end_date,
+        Defect.status == DefectStatus.CLOSED
+    ).group_by(cast(Defect.updated_at, Date)).all()
+    
+    # Fill missing dates with 0
+    result = []
+    for i in range(7):
+        current_date = start_date + timedelta(days=i)
+        created_count = next((s.count for s in created_stats if s.date == current_date), 0)
+        resolved_count = next((s.count for s in resolved_stats if s.date == current_date), 0)
+        result.append({
+            'date': current_date.isoformat(),
+            'created': created_count,
+            'resolved': resolved_count
+        })
+    
+    return result
 
 @app.get("/api/v1/defects/", response_model=List[DefectResponse])
 def get_defects(object_id: int = None, current_user: str = Depends(verify_token), db: Session = Depends(get_db)):
@@ -493,6 +570,39 @@ async def add_image(defect_id: int, image: UploadFile = File(...), db: Session =
     db.commit()
     
     return {"message": "Image added successfully"}
+
+@app.delete("/api/v1/defects/{defect_id}/photo")
+def delete_defect_photo(defect_id: int, db: Session = Depends(get_db)):
+    defect = db.query(Defect).filter(Defect.id == defect_id).first()
+    if not defect:
+        raise HTTPException(status_code=404, detail="Defect not found")
+    
+    defect.photo = None
+    db.commit()
+    return {"message": "Photo deleted"}
+
+@app.delete("/api/v1/defects/{defect_id}/images/{image_id}")
+def delete_defect_image(defect_id: int, image_id: int, db: Session = Depends(get_db)):
+    image = db.query(DefectImage).filter(DefectImage.id == image_id, DefectImage.defect_id == defect_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    db.delete(image)
+    db.commit()
+    return {"message": "Image deleted"}
+
+@app.get("/api/v1/defects/{defect_id}/images")
+def get_defect_images(defect_id: int, db: Session = Depends(get_db)):
+    images = db.query(DefectImage).filter(DefectImage.defect_id == defect_id).all()
+    return [{"id": img.id, "filename": img.filename} for img in images]
+
+@app.get("/api/v1/defects/{defect_id}/photo")
+def get_defect_photo(defect_id: int, db: Session = Depends(get_db)):
+    defect = db.query(Defect).filter(Defect.id == defect_id).first()
+    if not defect or not defect.photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    return Response(content=defect.photo, media_type="image/jpeg")
 
 @app.get("/api/v1/defects/{defect_id}/images/{image_id}")
 def get_image(defect_id: int, image_id: int, db: Session = Depends(get_db)):
