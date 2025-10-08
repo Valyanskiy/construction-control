@@ -176,6 +176,42 @@ def create_project(project: ProjectCreate, current_user: str = Depends(verify_to
     
     return {"message": "Проект создан", "project_id": new_project.id}
 
+@app.put("/projects/{project_id}")
+def update_project(project_id: int, project: ProjectCreate, current_user: str = Depends(verify_token), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.nickname == current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    if user.role != RoleEnum.MANAGER:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    
+    existing_project = db.query(Project).filter(Project.id == project_id).first()
+    if not existing_project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    
+    existing_project.title = project.title
+    db.commit()
+    
+    return {"message": "Проект обновлен"}
+
+@app.delete("/projects/{project_id}")
+def delete_project(project_id: int, current_user: str = Depends(verify_token), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.nickname == current_user).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    
+    if user.role != RoleEnum.MANAGER:
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    
+    existing_project = db.query(Project).filter(Project.id == project_id).first()
+    if not existing_project:
+        raise HTTPException(status_code=404, detail="Проект не найден")
+    
+    db.delete(existing_project)
+    db.commit()
+    
+    return {"message": "Проект удален"}
+
 # Objects routes
 @app.post("/api/v1/objects/", response_model=ObjectResponse)
 def create_object(object_data: ObjectCreate, user: User = Depends(require_role(["MANAGER", "ENGINEER"])), db: Session = Depends(get_db)):
